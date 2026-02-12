@@ -303,11 +303,6 @@
         return new Date(d.setDate(diff));
     }
 
-    /**
-     * FUNGSI PENCEGAH PERUBAHAN INSTAN
-     * Jika admin menambah orang hari ini, orang tersebut tidak akan muncul di jadwal minggu berjalan.
-     * Baru akan muncul di jadwal minggu depan (Senin depan).
-     */
     function getEffectiveStaffList(targetDate) {
         const currentData = getStaffData();
         const targetMonday = getMonday(targetDate);
@@ -317,22 +312,17 @@
         const currentWeekMonday = getMonday(now);
         currentWeekMonday.setHours(0,0,0,0);
 
-        // Ambil snapshot yang tersimpan
         let snapshot = localStorage.getItem(SNAPSHOT_KEY);
         snapshot = snapshot ? JSON.parse(snapshot) : null;
 
-        // Jika targetDate adalah minggu ini
         if (targetMonday.getTime() === currentWeekMonday.getTime()) {
             if (!snapshot || snapshot.weekId !== currentWeekMonday.getTime()) {
-                // Belum ada snapshot minggu ini, buat baru dari data yang ada
                 const newSnapshot = { weekId: currentWeekMonday.getTime(), staff: currentData };
                 localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(newSnapshot));
                 return currentData;
             }
-            return snapshot.staff; // Gunakan data lama yang terkunci untuk minggu ini
+            return snapshot.staff;
         }
-        
-        // Untuk minggu depan atau lainnya, gunakan data terbaru
         return currentData;
     }
 
@@ -350,22 +340,37 @@
         return balanced;
     }
 
+    // LOGIKA TERBARU: MENGGUNAKAN TOTAL HARI KERJA SEJAK TITIK ACUAN (EPOCH)
+    // Agar rotasi tidak patah saat Senin tiba.
     function getDuty(date) {
-        // Gunakan data efektif (snapshot minggu berjalan atau data asli jika minggu depan)
         const effectiveStaff = getEffectiveStaffList(date);
         if (!effectiveStaff || effectiveStaff.length < 2) return [{name:"Kosong", skill:0}, {name:"Kosong", skill:0}];
         
         const balancedList = getBalancedStaffList(effectiveStaff);
-        const monday = getMonday(date);
-        monday.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.floor((date - monday) / (1000 * 60 * 60 * 24));
-        const epoch = new Date(2024, 0, 1);
-        const weekCount = Math.floor((monday - epoch) / (1000 * 60 * 60 * 24 * 7));
         
-        const startIdx = (weekCount * 2) % balancedList.length;
-        const idx1 = (startIdx + (diffDays * 2)) % balancedList.length;
-        const idx2 = (startIdx + (diffDays * 2 + 1)) % balancedList.length;
+        // Titik acuan: 1 Januari 2024 (Senin)
+        const epoch = new Date(2024, 0, 1);
+        const targetDate = new Date(date);
+        targetDate.setHours(0,0,0,0);
+
+        // Hitung total hari yang dilewati sejak epoch
+        const totalDiffDays = Math.floor((targetDate - epoch) / (1000 * 60 * 60 * 24));
+        
+        // Hitung berapa banyak hari Minggu (libur) yang dilewati
+        // Karena hari Minggu tidak dihitung dalam antrean sekuensial
+        let sundayCount = 0;
+        for(let i=0; i<=totalDiffDays; i++) {
+            let check = new Date(epoch);
+            check.setDate(check.getDate() + i);
+            if(check.getDay() === 0) sundayCount++;
+        }
+
+        // Total hari aktif piket (Senin-Sabtu)
+        const activeDutyDays = totalDiffDays - sundayCount;
+
+        // Ambil 2 orang berdasarkan urutan kumulatif
+        const idx1 = (activeDutyDays * 2) % balancedList.length;
+        const idx2 = (activeDutyDays * 2 + 1) % balancedList.length;
         
         return [balancedList[idx1], balancedList[idx2]];
     }
@@ -381,7 +386,7 @@
         
         container.innerHTML = "";
         highlight.style.display = "none";
-        document.getElementById('resetNotice').innerText = "Sistem: Update personil baru akan efektif di jadwal Senin depan.";
+        document.getElementById('resetNotice').innerText = "Sistem: Rotasi berurutan (Jeda 5-6 hari). Update staff baru efektif Senin depan.";
 
         if(mode === 'leaderboard') {
             renderLeaderboard();
@@ -566,3 +571,5 @@
 
 </body>
 </html>
+
+    
