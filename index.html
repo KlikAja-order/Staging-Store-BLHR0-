@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Ops V5.4 - Weekly Reset</title>
+    <title>Elite Ops V5.5 - Smart Balancing System</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -93,11 +93,6 @@
         .today-sticky-bar h4 { margin: 0; font-size: 11px; text-transform: uppercase; opacity: 0.8; }
         .today-sticky-bar .names { display: flex; gap: 15px; font-weight: 800; font-size: 14px; margin-top: 5px; flex-wrap: wrap; }
 
-        @keyframes slideDown {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
         .header-title {
             text-align: center;
             border-bottom: 2px solid var(--accent);
@@ -130,7 +125,21 @@
             background: rgba(0,0,0,0.2); 
             margin-top: 5px; 
             border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
         }
+
+        .task-list {
+            margin-top: 25px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            font-size: 12px;
+            border: 1px dashed #444;
+        }
+
+        .task-list h5 { color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
+        .task-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
 
         .modal {
             display: none;
@@ -145,18 +154,20 @@
 
         .modal-content {
             background: var(--luxury);
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 600px;
             padding: 25px;
             border-radius: 20px;
             border: 1px solid var(--accent);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .staff-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
+            padding: 10px;
             background: #222;
             margin-bottom: 5px;
             border-radius: 5px;
@@ -171,8 +182,17 @@
             font-weight: bold;
         }
 
-        @media print {
-            .nav-header, .today-sticky-bar { display: none !important; }
+        .rating-select {
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
     </style>
 </head>
@@ -180,7 +200,7 @@
 
 <div class="nav-header">
     <div style="display:flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin:0; color:var(--accent); font-size: 1.2rem;">JADWAL PIKET<span style="font-weight:100">SS BLHR00</span></h2>
+        <h2 style="margin:0; color:var(--accent); font-size: 1.2rem;">JADWAL PIKET <span style="font-weight:100">SS BLHR00</span></h2>
         <button class="btn btn-admin" onclick="toggleModal('loginModal')">🔒 ADMIN</button>
     </div>
 
@@ -188,7 +208,7 @@
         <select id="viewMode" class="input-field" onchange="renderData()">
             <option value="monthly">Mode Kalender</option>
             <option value="weekly">Minggu Ini</option>
-            <option value="leaderboard">Statistik Tugas</option>
+            <option value="leaderboard">Statistik & Skill</option>
         </select>
         <select id="monthSelect" class="input-field" onchange="renderData()"></select>
         <input type="text" id="searchBar" class="input-field" placeholder="Cari nama..." onkeyup="renderData()">
@@ -203,11 +223,26 @@
         <h3 id="displayTitle">Jadwal Piket</h3>
         <p id="resetNotice" style="font-size: 10px; color: #888; margin-top: -10px;"></p>
     </div>
+
     <div id="mainContainer" class="schedule-grid"></div>
+
+    <div class="task-list">
+        <h5>📋 TUGAS OPERASIONAL PETUGAS PIKET:</h5>
+        <div class="task-items">
+            <div>• Menjaga kebersihan staging</div>
+            <div>• Membersihkan seluruh area staging</div>
+            <div>• Melakukan sorter paket pagi</div>
+            <div>• Melakukan bagging sore hari</div>
+            <div>• Menata rapi karung/bagor</div>
+            <div>• Membersihkan kamar mandi & toilet</div>
+            <div>• Memastikan sampah terbuang</div>
+            <div>• Merapikan alat kerja (scanner/trolley)</div>
+        </div>
+    </div>
 </div>
 
 <div id="loginModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 350px;">
         <h3>Admin Access</h3>
         <input type="password" id="pinInput" class="input-field" placeholder="PIN Keamanan">
         <div style="display:flex; gap:10px; margin-top:15px;">
@@ -219,33 +254,48 @@
 
 <div id="adminPanel" class="modal">
     <div class="modal-content">
-        <h3>Kelola Petugas</h3>
-        <p style="font-size: 10px; color: var(--accent);">*Karyawan baru akan mulai bertugas pada hari Senin depan.</p>
+        <h3>Kelola Petugas & Penilaian Skill</h3>
+        <p style="font-size: 10px; color: var(--accent);">
+            *Rating 1-5 (5=Sangat Cepat/Ahli). Sistem akan memasangkan Rating Tinggi dengan Rating Rendah agar tim seimbang.
+        </p>
         <div style="display:flex; gap:5px; margin-bottom:15px;">
             <input type="text" id="staffNameInput" class="input-field" placeholder="NIK - NAMA">
             <button class="btn" onclick="addStaff()">Tambah</button>
         </div>
-        <div id="adminStaffList" style="max-height: 250px; overflow-y: auto; margin-bottom:15px; border: 1px solid #333; padding: 5px; border-radius: 8px;"></div>
-        <button class="btn btn-admin" style="width:100%" onclick="closeAdmin()">Simpan Perubahan</button>
+        <div id="adminStaffList" style="max-height: 350px; overflow-y: auto; margin-bottom:15px; border: 1px solid #333; padding: 10px; border-radius: 8px;"></div>
+        <button class="btn btn-admin" style="width:100%" onclick="closeAdmin()">Simpan & Terapkan</button>
     </div>
 </div>
 
 <script>
-    const STORAGE_KEY = "elite_ops_v5_weekly_reset";
+    const STORAGE_KEY = "elite_ops_v5_5_balanced";
     const PIN = "212008";
     
+    // Default Data dengan Skill Level (1-5)
     const defaultStaff = [
-        "10078570 - AHMAD KHOIRUL ANAAM", "10070223 - ARIF PRASETYO", "10066194 - AZI AZAN",
-        "10075590 - BUDJA GIGIH PRABOWO", "10072034 - DENI KURNIAWAN", "10082115 - FAJAR SULISTIYANTO",
-        "10079245 - FITLI APRIAN SAPUTRO", "10049109 - HERU PRATAMA", "10074622 - KANTONA CAHYA FEBRINANDA",
-        "10078994 - RIDWAN EKA JUNIYANTO", "10082966 - RIZKI NUR AZIS", "10073627 - RIZKY TULUS SETIAWAN",
-        "10078864 - RUDIKUSMANTO"
+        { name: "10078570 - AHMAD KHOIRUL ANAAM", skill: 5 },
+        { name: "10070223 - ARIF PRASETYO", skill: 4 },
+        { name: "10066194 - AZI AZAN", skill: 3 },
+        { name: "10075590 - BUDJA GIGIH PRABOWO", skill: 3 },
+        { name: "10072034 - DENI KURNIAWAN", skill: 4 },
+        { name: "10082115 - FAJAR SULISTIYANTO", skill: 2 },
+        { name: "10079245 - FITLI APRIAN SAPUTRO", skill: 5 },
+        { name: "10049109 - HERU PRATAMA", skill: 3 },
+        { name: "10074622 - KANTONA CAHYA FEBRINANDA", skill: 4 },
+        { name: "10078994 - RIDWAN EKA JUNIYANTO", skill: 2 },
+        { name: "10082966 - RIZKI NUR AZIS", skill: 3 },
+        { name: "10073627 - RIZKY TULUS SETIAWAN", skill: 4 },
+        { name: "10078864 - RUDIKUSMANTO", skill: 5 }
     ];
 
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const days = ["MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"];
 
-    // Fungsi mendapatkan Senin di minggu tertentu
+    function getStaffData() {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : defaultStaff;
+    }
+
     function getMonday(d) {
         d = new Date(d);
         var day = d.getDay(),
@@ -253,9 +303,175 @@
         return new Date(d.setDate(diff));
     }
 
-    function getStaffData() {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : defaultStaff;
+    /**
+     * LOGIKA SMART BALANCING
+     * Mengurutkan staff berdasarkan skill, lalu memasangkan High-Skill dengan Low-Skill
+     */
+    function getBalancedStaffList(staffArray) {
+        const sorted = [...staffArray].sort((a, b) => b.skill - a.skill);
+        const balanced = [];
+        const mid = Math.ceil(sorted.length / 2);
+        
+        for (let i = 0; i < mid; i++) {
+            balanced.push(sorted[i]); // High skill
+            if (sorted[sorted.length - 1 - i] && (sorted.length - 1 - i) !== i) {
+                balanced.push(sorted[sorted.length - 1 - i]); // Low skill
+            }
+        }
+        return balanced;
+    }
+
+    function getDuty(date, currentStaff) {
+        if (!currentStaff || currentStaff.length < 2) return [{name:"Kosong", skill:0}, {name:"Kosong", skill:0}];
+        
+        const balancedList = getBalancedStaffList(currentStaff);
+        const monday = getMonday(date);
+        monday.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.floor((date - monday) / (1000 * 60 * 60 * 24));
+        const epoch = new Date(2024, 0, 1);
+        const weekCount = Math.floor((monday - epoch) / (1000 * 60 * 60 * 24 * 7));
+        
+        const startIdx = (weekCount * 2) % balancedList.length;
+        const idx1 = (startIdx + (diffDays * 2)) % balancedList.length;
+        const idx2 = (startIdx + (diffDays * 2 + 1)) % balancedList.length;
+        
+        return [balancedList[idx1], balancedList[idx2]];
+    }
+
+    function renderData() {
+        const currentStaff = getStaffData();
+        const mode = document.getElementById('viewMode').value;
+        const targetMonth = parseInt(document.getElementById('monthSelect').value);
+        const search = document.getElementById('searchBar').value.toLowerCase();
+        const container = document.getElementById('mainContainer');
+        const highlight = document.getElementById('todayHighlight');
+        const now = new Date();
+        const year = now.getFullYear();
+        
+        container.innerHTML = "";
+        highlight.style.display = "none";
+        document.getElementById('resetNotice').innerText = "Sistem: Rotasi Smart-Balancing diperbarui setiap Senin.";
+
+        if(mode === 'leaderboard') {
+            renderLeaderboard(currentStaff);
+            return;
+        }
+
+        let start = new Date(year, targetMonth, 1);
+        let end = new Date(year, targetMonth + 1, 0);
+
+        if(mode === 'weekly') {
+            start = getMonday(new Date());
+            end = new Date(start);
+            end.setDate(start.getDate() + 5);
+        }
+
+        document.getElementById('displayTitle').innerText = (mode === 'weekly' ? "FOKUS MINGGU INI" : months[targetMonth].toUpperCase()) + " " + year;
+
+        for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            if(d.getDay() === 0) continue; 
+
+            const [p1, p2] = getDuty(new Date(d), currentStaff);
+            if(search && !p1.name.toLowerCase().includes(search) && !p2.name.toLowerCase().includes(search)) continue;
+
+            const isToday = d.toDateString() === now.toDateString();
+            
+            if(isToday) {
+                highlight.style.display = "block";
+                highlight.innerHTML = `
+                    <h4>Petugas Hari Ini:</h4>
+                    <div class="names">
+                        <span>👤 ${p1.name.split(' - ')[1]} (⚡${p1.skill})</span>
+                        <span>👤 ${p2.name.split(' - ')[1]} (⚡${p2.skill})</span>
+                    </div>
+                `;
+            }
+
+            const card = document.createElement('div');
+            card.className = `card ${isToday ? 'today' : ''}`;
+            card.innerHTML = `
+                <h4>${isToday ? '⭐ HARI INI' : days[d.getDay()]} - ${d.getDate()} ${months[d.getMonth()]}</h4>
+                <div class="staff-name"><span>👤 ${p1.name}</span> <b style="color:var(--accent)">${p1.skill}</b></div>
+                <div class="staff-name"><span>👤 ${p2.name}</span> <b style="color:var(--accent)">${p2.skill}</b></div>
+            `;
+            container.appendChild(card);
+        }
+    }
+
+    function renderLeaderboard(currentStaff) {
+        document.getElementById('displayTitle').innerText = "POWER RANKING & STATISTIK " + new Date().getFullYear();
+        const container = document.getElementById('mainContainer');
+        let stats = {};
+        currentStaff.forEach(s => stats[s.name] = { count: 0, skill: s.skill });
+
+        const year = new Date().getFullYear();
+        for(let m=0; m<12; m++) {
+            let d = new Date(year, m, 1);
+            while(d.getMonth() === m) {
+                if(d.getDay() !== 0) {
+                    const [p1, p2] = getDuty(new Date(d), currentStaff);
+                    if(stats[p1.name]) stats[p1.name].count++;
+                    if(stats[p2.name]) stats[p2.name].count++;
+                }
+                d.setDate(d.getDate() + 1);
+            }
+        }
+
+        Object.keys(stats).sort((a,b) => stats[b].skill - stats[a].skill).forEach(name => {
+            const card = document.createElement('div');
+            card.className = "card";
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between">
+                    <b>${name}</b>
+                    <span class="badge-count">⚡ Skill: ${stats[name].skill}</span>
+                </div>
+                <div style="margin-top:10px; font-size:12px">Estimasi Piket Tahunan: <b>${stats[name].count} Hari</b></div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function renderAdminList() {
+        const currentStaff = getStaffData();
+        const list = document.getElementById('adminStaffList');
+        list.innerHTML = currentStaff.map((s, i) => `
+            <div class="staff-item">
+                <div style="flex:1">${s.name}</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <select class="rating-select" onchange="updateSkill(${i}, this.value)">
+                        ${[1,2,3,4,5].map(v => `<option value="${v}" ${s.skill == v ? 'selected' : ''}>${v}</option>`).join('')}
+                    </select>
+                    <span style="color:#ff4d4d; cursor:pointer; font-weight:bold;" onclick="removeStaff(${i})">X</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateSkill(index, val) {
+        const currentStaff = getStaffData();
+        currentStaff[index].skill = parseInt(val);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentStaff));
+    }
+
+    function addStaff() {
+        const inp = document.getElementById('staffNameInput');
+        if(inp.value.trim()) {
+            const currentStaff = getStaffData();
+            currentStaff.push({ name: inp.value.toUpperCase(), skill: 3 });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentStaff));
+            inp.value = "";
+            renderAdminList();
+        }
+    }
+
+    function removeStaff(i) {
+        if(confirm("Hapus petugas ini?")) {
+            const currentStaff = getStaffData();
+            currentStaff.splice(i, 1);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentStaff));
+            renderAdminList();
+        }
     }
 
     function init() {
@@ -263,7 +479,7 @@
         const now = new Date();
         months.forEach((m, i) => {
             let o = document.createElement('option');
-            o.value = i; o.innerText = m;
+            o.value = i; o.innerText = m + " " + now.getFullYear();
             if(i === now.getMonth()) o.selected = true;
             mSelect.appendChild(o);
         });
@@ -281,166 +497,12 @@
             toggleModal('loginModal');
             toggleModal('adminPanel');
             renderAdminList();
-        } else {
-            alert("PIN Salah!");
-        }
+        } else { alert("PIN Salah!"); }
     }
 
     function closeAdmin() {
         toggleModal('adminPanel');
         renderData();
-    }
-
-    /**
-     * LOGIKA RESET PER MINGGU
-     * Algoritma ini menghitung rotasi berdasarkan daftar karyawan 
-     * yang tersedia pada awal minggu (Senin) tanggal tersebut.
-     */
-    function getDuty(date, currentStaff) {
-        if (!currentStaff || currentStaff.length === 0) return ["Kosong", "Kosong"];
-        
-        // Cari hari Senin di minggu dari 'date'
-        const monday = getMonday(date);
-        monday.setHours(0, 0, 0, 0);
-
-        // Hitung selisih hari dari Senin ke tanggal yang dicari (0=Senin, 1=Selasa, dst)
-        const diffDays = Math.floor((date - monday) / (1000 * 60 * 60 * 24));
-        
-        // Gunakan Monday sebagai seed (agar setiap minggu punya awal rotasi yang konsisten)
-        // Kita gunakan jumlah minggu sejak 2024 sebagai penggeser (offset) agar tiap minggu orangnya beda
-        const epoch = new Date(2024, 0, 1);
-        const weekCount = Math.floor((monday - epoch) / (1000 * 60 * 60 * 24 * 7));
-        
-        // Rotasi: Setiap minggu dimulai dari index yang bergeser (weekCount * 2)
-        const startIdx = (weekCount * 2) % currentStaff.length;
-        
-        const idx1 = (startIdx + (diffDays * 2)) % currentStaff.length;
-        const idx2 = (startIdx + (diffDays * 2 + 1)) % currentStaff.length;
-        
-        return [currentStaff[idx1], currentStaff[idx2]];
-    }
-
-    function renderData() {
-        const currentStaff = getStaffData();
-        const mode = document.getElementById('viewMode').value;
-        const targetMonth = parseInt(document.getElementById('monthSelect').value);
-        const search = document.getElementById('searchBar').value.toLowerCase();
-        const container = document.getElementById('mainContainer');
-        const highlight = document.getElementById('todayHighlight');
-        const notice = document.getElementById('resetNotice');
-        const now = new Date();
-        const year = now.getFullYear();
-        
-        container.innerHTML = "";
-        highlight.style.display = "none";
-        notice.innerText = "Sistem: Rotasi diperbarui setiap hari Senin.";
-        
-        if(mode === 'leaderboard') {
-            renderLeaderboard(currentStaff);
-            return;
-        }
-
-        let start = new Date(year, targetMonth, 1);
-        let end = new Date(year, targetMonth + 1, 0);
-
-        if(mode === 'weekly') {
-            start = getMonday(new Date());
-            end = new Date(start);
-            end.setDate(start.getDate() + 5);
-        }
-
-        document.getElementById('displayTitle').innerText = mode === 'weekly' ? "FOKUS MINGGU INI" : months[targetMonth].toUpperCase();
-
-        for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            // Lewati Minggu
-            if(d.getDay() === 0) continue; 
-
-            const [p1, p2] = getDuty(new Date(d), currentStaff);
-            if(search && !p1.toLowerCase().includes(search) && !p2.toLowerCase().includes(search)) continue;
-
-            const isToday = d.toDateString() === now.toDateString();
-            
-            if(isToday) {
-                highlight.style.display = "block";
-                highlight.innerHTML = `
-                    <h4>Petugas Hari Ini:</h4>
-                    <div class="names">
-                        <span>👤 ${p1.split(' - ')[1] || p1}</span>
-                        <span>👤 ${p2.split(' - ')[1] || p2}</span>
-                    </div>
-                `;
-            }
-
-            const card = document.createElement('div');
-            card.className = `card ${isToday ? 'today' : ''}`;
-            card.innerHTML = `
-                <h4>${isToday ? '⭐ HARI INI' : days[d.getDay()]} - ${d.getDate()} ${months[d.getMonth()]}</h4>
-                <div class="staff-name">👤 ${p1}</div>
-                <div class="staff-name">👤 ${p2}</div>
-            `;
-            container.appendChild(card);
-        }
-    }
-
-    function renderLeaderboard(currentStaff) {
-        document.getElementById('displayTitle').innerText = "STATISTIK TUGAS TAHUNAN";
-        const container = document.getElementById('mainContainer');
-        let stats = {};
-        currentStaff.forEach(s => stats[s] = 0);
-
-        const year = new Date().getFullYear();
-        for(let m=0; m<12; m++) {
-            let d = new Date(year, m, 1);
-            while(d.getMonth() === m) {
-                if(d.getDay() !== 0) {
-                    const [p1, p2] = getDuty(new Date(d), currentStaff);
-                    if(stats[p1] !== undefined) stats[p1]++;
-                    if(stats[p2] !== undefined) stats[p2]++;
-                }
-                d.setDate(d.getDate() + 1);
-            }
-        }
-
-        Object.keys(stats).sort((a,b) => stats[b] - stats[a]).forEach(name => {
-            const card = document.createElement('div');
-            card.className = "card";
-            card.innerHTML = `
-                <b>${name}</b>
-                <div style="margin-top:10px">Estimasi Tugas: <span class="badge-count">${stats[name]} Hari</span></div>
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    function renderAdminList() {
-        const currentStaff = getStaffData();
-        const list = document.getElementById('adminStaffList');
-        list.innerHTML = currentStaff.map((s, i) => `
-            <div class="staff-item">
-                <span>${s}</span>
-                <span style="color:#ff4d4d; cursor:pointer; font-weight:bold; padding-left:10px;" onclick="removeStaff(${i})">HAPUS</span>
-            </div>
-        `).join('');
-    }
-
-    function addStaff() {
-        const inp = document.getElementById('staffNameInput');
-        if(inp.value.trim()) {
-            const currentStaff = getStaffData();
-            currentStaff.push(inp.value.toUpperCase());
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentStaff));
-            inp.value = "";
-            renderAdminList();
-        }
-    }
-
-    function removeStaff(i) {
-        if(confirm("Hapus petugas ini?")) {
-            const currentStaff = getStaffData();
-            currentStaff.splice(i, 1);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentStaff));
-            renderAdminList();
-        }
     }
 
     function downloadFile(type) {
@@ -453,18 +515,17 @@
             highlight.style.display = currentDisplay;
             if(type === 'jpg') {
                 const link = document.createElement('a');
-                link.download = `Jadwal_Elite.jpg`;
+                link.download = `Jadwal_Piket_Elite.jpg`;
                 link.href = canvas.toDataURL("image/jpeg");
                 link.click();
             } else {
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png');
-                const imgProps = pdf.getImageProperties(imgData);
                 const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save("Jadwal_Elite.pdf");
+                pdf.save("Jadwal_Piket_Elite.pdf");
             }
         });
     }
@@ -473,6 +534,5 @@
 </script>
 
 </body>
-        </html>
+    </html>
     
-
