@@ -269,9 +269,9 @@
 
 <script>
     const STORAGE_KEY = "elite_ops_v5_5_balanced";
+    const SNAPSHOT_KEY = "elite_ops_weekly_snapshot";
     const PIN = "212008";
     
-    // Default Data dengan Skill Level (1-5)
     const defaultStaff = [
         { name: "10078570 - AHMAD KHOIRUL ANAAM", skill: 5 },
         { name: "10070223 - ARIF PRASETYO", skill: 4 },
@@ -304,27 +304,58 @@
     }
 
     /**
-     * LOGIKA SMART BALANCING
-     * Mengurutkan staff berdasarkan skill, lalu memasangkan High-Skill dengan Low-Skill
+     * FUNGSI PENCEGAH PERUBAHAN INSTAN
+     * Jika admin menambah orang hari ini, orang tersebut tidak akan muncul di jadwal minggu berjalan.
+     * Baru akan muncul di jadwal minggu depan (Senin depan).
      */
+    function getEffectiveStaffList(targetDate) {
+        const currentData = getStaffData();
+        const targetMonday = getMonday(targetDate);
+        targetMonday.setHours(0,0,0,0);
+        
+        const now = new Date();
+        const currentWeekMonday = getMonday(now);
+        currentWeekMonday.setHours(0,0,0,0);
+
+        // Ambil snapshot yang tersimpan
+        let snapshot = localStorage.getItem(SNAPSHOT_KEY);
+        snapshot = snapshot ? JSON.parse(snapshot) : null;
+
+        // Jika targetDate adalah minggu ini
+        if (targetMonday.getTime() === currentWeekMonday.getTime()) {
+            if (!snapshot || snapshot.weekId !== currentWeekMonday.getTime()) {
+                // Belum ada snapshot minggu ini, buat baru dari data yang ada
+                const newSnapshot = { weekId: currentWeekMonday.getTime(), staff: currentData };
+                localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(newSnapshot));
+                return currentData;
+            }
+            return snapshot.staff; // Gunakan data lama yang terkunci untuk minggu ini
+        }
+        
+        // Untuk minggu depan atau lainnya, gunakan data terbaru
+        return currentData;
+    }
+
     function getBalancedStaffList(staffArray) {
         const sorted = [...staffArray].sort((a, b) => b.skill - a.skill);
         const balanced = [];
         const mid = Math.ceil(sorted.length / 2);
         
         for (let i = 0; i < mid; i++) {
-            balanced.push(sorted[i]); // High skill
+            balanced.push(sorted[i]);
             if (sorted[sorted.length - 1 - i] && (sorted.length - 1 - i) !== i) {
-                balanced.push(sorted[sorted.length - 1 - i]); // Low skill
+                balanced.push(sorted[sorted.length - 1 - i]);
             }
         }
         return balanced;
     }
 
-    function getDuty(date, currentStaff) {
-        if (!currentStaff || currentStaff.length < 2) return [{name:"Kosong", skill:0}, {name:"Kosong", skill:0}];
+    function getDuty(date) {
+        // Gunakan data efektif (snapshot minggu berjalan atau data asli jika minggu depan)
+        const effectiveStaff = getEffectiveStaffList(date);
+        if (!effectiveStaff || effectiveStaff.length < 2) return [{name:"Kosong", skill:0}, {name:"Kosong", skill:0}];
         
-        const balancedList = getBalancedStaffList(currentStaff);
+        const balancedList = getBalancedStaffList(effectiveStaff);
         const monday = getMonday(date);
         monday.setHours(0, 0, 0, 0);
 
@@ -340,7 +371,6 @@
     }
 
     function renderData() {
-        const currentStaff = getStaffData();
         const mode = document.getElementById('viewMode').value;
         const targetMonth = parseInt(document.getElementById('monthSelect').value);
         const search = document.getElementById('searchBar').value.toLowerCase();
@@ -351,10 +381,10 @@
         
         container.innerHTML = "";
         highlight.style.display = "none";
-        document.getElementById('resetNotice').innerText = "Sistem: Rotasi Smart-Balancing diperbarui setiap Senin.";
+        document.getElementById('resetNotice').innerText = "Sistem: Update personil baru akan efektif di jadwal Senin depan.";
 
         if(mode === 'leaderboard') {
-            renderLeaderboard(currentStaff);
+            renderLeaderboard();
             return;
         }
 
@@ -367,12 +397,12 @@
             end.setDate(start.getDate() + 5);
         }
 
-        document.getElementById('displayTitle').innerText = (mode === 'weekly' ? "FOKUS MINGGU INI" : months[targetMonth].toUpperCase()) + " " + year;
+        document.getElementById('displayTitle').innerText = (mode === 'weekly' ? "SATRIA BLHR0" : months[targetMonth].toUpperCase()) + " " + year;
 
         for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             if(d.getDay() === 0) continue; 
 
-            const [p1, p2] = getDuty(new Date(d), currentStaff);
+            const [p1, p2] = getDuty(new Date(d));
             if(search && !p1.name.toLowerCase().includes(search) && !p2.name.toLowerCase().includes(search)) continue;
 
             const isToday = d.toDateString() === now.toDateString();
@@ -399,9 +429,10 @@
         }
     }
 
-    function renderLeaderboard(currentStaff) {
-        document.getElementById('displayTitle').innerText = "POWER RANKING & STATISTIK " + new Date().getFullYear();
+    function renderLeaderboard() {
+        document.getElementById('displayTitle').innerText = "STATISTIK SATRIA " + new Date().getFullYear();
         const container = document.getElementById('mainContainer');
+        const currentStaff = getStaffData();
         let stats = {};
         currentStaff.forEach(s => stats[s.name] = { count: 0, skill: s.skill });
 
@@ -410,7 +441,7 @@
             let d = new Date(year, m, 1);
             while(d.getMonth() === m) {
                 if(d.getDay() !== 0) {
-                    const [p1, p2] = getDuty(new Date(d), currentStaff);
+                    const [p1, p2] = getDuty(new Date(d));
                     if(stats[p1.name]) stats[p1.name].count++;
                     if(stats[p2.name]) stats[p2.name].count++;
                 }
@@ -500,39 +531,4 @@
         } else { alert("PIN Salah!"); }
     }
 
-    function closeAdmin() {
-        toggleModal('adminPanel');
-        renderData();
-    }
-
-    function downloadFile(type) {
-        const area = document.getElementById('export-area');
-        const highlight = document.getElementById('todayHighlight');
-        const currentDisplay = highlight.style.display;
-        highlight.style.display = "none";
-
-        html2canvas(area, { scale: 2, backgroundColor: '#1a1a1a' }).then(canvas => {
-            highlight.style.display = currentDisplay;
-            if(type === 'jpg') {
-                const link = document.createElement('a');
-                link.download = `Jadwal_Piket_Elite.jpg`;
-                link.href = canvas.toDataURL("image/jpeg");
-                link.click();
-            } else {
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save("Jadwal_Piket_Elite.pdf");
-            }
-        });
-    }
-
-    window.onload = init;
-</script>
-
-</body>
-    </html>
-    
+    function closeAdmin(
