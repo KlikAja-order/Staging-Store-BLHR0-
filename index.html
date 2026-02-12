@@ -531,4 +531,38 @@
         } else { alert("PIN Salah!"); }
     }
 
-    function closeAdmin(
+    function closeAdmin() {
+        toggleModal('adminPanel');
+        renderData();
+    }
+
+    function downloadFile(type) {
+        const area = document.getElementById('export-area');
+        const highlight = document.getElementById('todayHighlight');
+        const currentDisplay = highlight.style.display;
+        highlight.style.display = "none";
+
+        html2canvas(area, { scale: 2, backgroundColor: '#1a1a1a' }).then(canvas => {
+            highlight.style.display = currentDisplay;
+            if(type === 'jpg') {
+                const link = document.createElement('a');
+                link.download = `Jadwal_Piket_Elite.jpg`;
+                link.href = canvas.toDataURL("image/jpeg");
+                link.click();
+            } else {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save("Jadwal_Piket_Elite.pdf");
+            }
+        });
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
